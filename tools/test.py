@@ -7,8 +7,8 @@ import warnings
 
 import mmcv
 import torch
-from mmcv import Config, DictAction
-from mmcv.cnn import fuse_conv_bn
+from mmcv.utils import Config, DictAction
+from mmcv.cnn import fuse_conv_bn 
 from mmcv.runner import (get_dist_info, init_dist, load_checkpoint,
                          wrap_fp16_model)
 from mmdet.apis import multi_gpu_test, single_gpu_test
@@ -18,14 +18,22 @@ from mmrotate.datasets import build_dataset
 from mmrotate.models import build_detector
 from mmrotate.utils import (build_ddp, build_dp, compat_cfg, get_device,
                             setup_multi_processes)
+from mmrotate.utils import ( compat_cfg,setup_multi_processes)
+from mmcv.image import tensor2imgs
+
+
+from mmdet.core import encode_mask_results
+
+# python S2A-SAM/demo/image_demo.py instances2/val2/images/47.png S2A-SAM/configs/s2anet/s2anet_r50_fpn_1x_dota_le135.py --weights log/rbox/epoch_24.pth
+
 
 
 def parse_args():
     """Parse parameters."""
     parser = argparse.ArgumentParser(
         description='MMDet test (and eval) a model')
-    parser.add_argument('config', help='test config file path')
-    parser.add_argument('checkpoint', help='checkpoint file')
+    parser.add_argument('--config', default='S2A-SAM/configs/s2anet/s2anet_r50_fpn_1x_dota_le135.py',help='test config file path')
+    parser.add_argument('--checkpoint',default='log/rbox/epoch_24.pth', help='checkpoint file')
     parser.add_argument(
         '--work-dir',
         help='the directory to save the file containing evaluation metrics')
@@ -43,7 +51,7 @@ def parse_args():
         '(only applicable to non-distributed testing)')
     parser.add_argument(
         '--format-only',
-        action='store_true',
+        action='store_false',
         help='Format the output results without perform evaluation. It is'
         'useful when you want to format the result to a specific format and '
         'submit it to the test server')
@@ -55,7 +63,7 @@ def parse_args():
         ' "segm", "proposal" for COCO, and "mAP", "recall" for PASCAL VOC')
     parser.add_argument('--show', action='store_true', help='show results')
     parser.add_argument(
-        '--show-dir', help='directory where painted images will be saved')
+        '--show-dir',default='instances2/val2/predict_image', help='directory where painted images will be saved')
     parser.add_argument(
         '--show-score-thr',
         type=float,
@@ -207,7 +215,34 @@ def main():
     dataset = build_dataset(cfg.data.test)
     data_loader = build_dataloader(dataset, **test_loader_cfg)
 
-    # build the model and load checkpoint
+    for data in data_loader:
+        print(type(data['img']))
+    # from mmcv.parallel import DataContainer
+    # import torch
+
+    # def fix_batch(batch):
+    #     """将 img 字段的列表转为堆叠张量"""
+    #     if 'img' in batch:
+    #         # 检查 img 是否被错误存储为列表
+    #         if isinstance(batch['img'], list):
+    #             # 堆叠列表中的张量 [N, C, H, W
+    #             img_tensor = batch['img'][0].data[0]
+    #             batch['img'] = DataContainer(img_tensor, stack=True)
+    #     return batch
+
+    # # 重写 data_loader 的迭代逻辑
+    # class FixedDataLoader:
+    #     def __init__(self, orig_loader):
+    #         self.orig_loader = orig_loader
+    #         self.dataset = orig_loader.dataset
+            
+    #     def __iter__(self):
+    #         for batch in self.orig_loader:
+    #             yield fix_batch(batch)
+
+    # # 替换原 data_loader
+    # data_loader = FixedDataLoader(data_loader)
+
     cfg.model.train_cfg = None
     cfg.device = get_device()
     model = build_detector(cfg.model, test_cfg=cfg.get('test_cfg'))
@@ -265,6 +300,70 @@ def main():
             metric_dict = dict(config=args.config, metric=metric)
             if args.work_dir is not None and rank == 0:
                 mmcv.dump(metric_dict, json_file)
+
+
+def single_gpu_test(model,
+                    data_loader,
+                    show=False,
+                    out_dir=None,
+                    show_score_thr=0.3):
+    model.eval()
+    results = []
+    dataset = data_loader.dataset
+    PALETTE = getattr(dataset, 'PALETTE', None)
+    prog_bar = mmcv.ProgressBar(len(dataset))
+    for i, data in enumerate(data_loader):
+        with torch.no_grad():
+            result = model(return_loss=False, rescale=True, **data)
+
+        batch_size = len(result)
+        if show or out_dir:
+            if batch_size == 1 and isinstance(data['img'][0], torch.Tensor):
+                img_tensor = data['img'][0]
+            else:
+                img_tensor = data['img'][0].data[0]
+            img_metas = data['img_metas'][0].data[0]
+            imgs = tensor2imgs(img_tensor, **img_metas[0]['img_norm_cfg'])
+            assert len(imgs) == len(img_metas)
+
+            for i, (img, img_meta) in enumerate(zip(imgs, img_metas)):
+                h, w, _ = img_meta['img_shape']
+                img_show = img[:h, :w, :]
+
+                ori_h, ori_w = img_meta['ori_shape'][:-1]
+                img_show = mmcv.imresize(img_show, (ori_w, ori_h))
+
+                if out_dir:
+                    out_file = osp.join(out_dir, img_meta['ori_filename'])
+                else:
+                    out_file = None
+
+                model.module.show_result(
+                    img_show,
+                    result[i],
+                    bbox_color=PALETTE,
+                    text_color=PALETTE,
+                    mask_color=PALETTE,
+                    show=show,
+                    out_file=out_file,
+                    score_thr=show_score_thr)
+
+        # encode mask results
+        if isinstance(result[0], tuple):
+            result = [(bbox_results, encode_mask_results(mask_results))
+                      for bbox_results, mask_results in result]
+        # This logic is only used in panoptic segmentation test.
+        elif isinstance(result[0], dict) and 'ins_results' in result[0]:
+            for j in range(len(result)):
+                bbox_results, mask_results = result[j]['ins_results']
+                result[j]['ins_results'] = (bbox_results,
+                                            encode_mask_results(mask_results))
+
+        results.extend(result)
+
+        for _ in range(batch_size):
+            prog_bar.update()
+    return results
 
 
 if __name__ == '__main__':

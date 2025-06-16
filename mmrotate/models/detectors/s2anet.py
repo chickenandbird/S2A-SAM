@@ -118,16 +118,20 @@ class S2ANet(RotatedBaseDetector):
         x = self.extract_feat(img)
         outs = self.fam_head(x)
         rois = self.fam_head.refine_bboxes(*outs)
+
         # rois: list(indexed by images) of list(indexed by levels)
         align_feat = self.align_conv(x, rois)
         outs = self.odm_head(align_feat)
 
         bbox_inputs = outs + (img_meta, self.test_cfg, rescale)
         bbox_list = self.odm_head.get_bboxes(*bbox_inputs, rois=rois)
+
+
         bbox_results = [
             rbbox2result(det_bboxes, det_labels, self.odm_head.num_classes)
             for det_bboxes, det_labels in bbox_list
         ]
+        
         return bbox_results
 
     def aug_test(self, imgs, img_metas, **kwargs):

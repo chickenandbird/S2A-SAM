@@ -2,7 +2,36 @@ _base_ = [
     '../_base_/datasets/dotav1.py', '../_base_/schedules/schedule_1x.py',
     '../_base_/default_runtime.py'
 ]
+dataset_type = 'DOTADataset'
 
+
+        
+evaluation = dict(interval=2, metric='mAP')
+optim_wrapper = dict(
+    optimizer=dict(
+        _delete_=True,
+        type='AdamW',
+        lr=0.00005,
+        betas=(0.9, 0.999),
+        weight_decay=0.05))
+# optimizer = dict(type='SGD', lr=0.00005, momentum=0.9, weight_decay=0.0001)
+# optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
+lr_config = dict(
+    policy='step',
+    warmup='linear',
+    warmup_iters=500,
+    warmup_ratio=0.3333333333333333,
+    step=[8,11])
+runner = dict(type='EpochBasedRunner', max_epochs=24)
+checkpoint_config = dict(interval=1)
+log_config = dict(interval=50, hooks=[dict(type='TextLoggerHook')])
+dist_params = dict(backend='nccl')
+log_level = 'INFO'
+load_from = None
+resume_from = None
+workflow = [('train', 1)]
+opencv_num_threads = 0
+mp_start_method = 'fork'
 angle_version = 'le135'
 model = dict(
     type='S2ANet',
@@ -26,7 +55,7 @@ model = dict(
         num_outs=5),
     fam_head=dict(
         type='RotatedRetinaHead',
-        num_classes=15,
+        num_classes=8,
         in_channels=256,
         stacked_convs=2,
         feat_channels=256,
@@ -58,7 +87,7 @@ model = dict(
         featmap_strides=[8, 16, 32, 64, 128]),
     odm_head=dict(
         type='ODMRefineHead',
-        num_classes=15,
+        num_classes=8,
         in_channels=256,
         stacked_convs=2,
         feat_channels=256,
@@ -127,6 +156,9 @@ train_pipeline = [
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels'])
 ]
 data = dict(
-    train=dict(pipeline=train_pipeline, version=angle_version),
-    val=dict(version=angle_version),
-    test=dict(version=angle_version))
+    train=dict(ann_file='instances2/train/labelTxt/',
+    img_prefix='instances2/train/images/',pipeline=train_pipeline, version=angle_version),
+    val=dict(ann_file='instances2/val/labelTxt/',
+        img_prefix='instances2/val/images/', version=angle_version),
+    test=dict(ann_file='instances2/val2/labelTxt/',
+        img_prefix='instances2/val2/images/', version=angle_version))

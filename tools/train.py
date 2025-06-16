@@ -24,10 +24,10 @@ from mmrotate.utils import (collect_env, get_device, get_root_logger,
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a detector')
-    parser.add_argument('config', help='train config file path')
-    parser.add_argument('--work-dir', help='the dir to save logs and models')
+    parser.add_argument('--config',default='S2A-SAM/configs/s2anet/s2anet_r50_fpn_1x_dota_le135.py', help='train config file path')
+    parser.add_argument('--work-dir',default='log/rbox2', help='the dir to save logs and models')
     parser.add_argument(
-        '--resume-from', help='the checkpoint file to resume from')
+        '--resume-from', default='log/rbox/epoch_2.pth',help='the checkpoint file to resume from')
     parser.add_argument(
         '--auto-resume',
         action='store_true',
@@ -81,6 +81,12 @@ def parse_args():
 
 
 def main():
+    # 减少内存碎片（关键！）
+    torch.cuda.set_per_process_memory_fraction(0.9)  # 限制进程最大占用90%显存
+    torch.backends.cudnn.benchmark = True      # 加速卷积计算
+    # 优化内存分配策略
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
+
     args = parse_args()
 
     cfg = Config.fromfile(args.config)

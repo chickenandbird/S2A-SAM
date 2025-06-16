@@ -35,11 +35,23 @@ class DOTADataset(CustomDataset):
                'basketball-court', 'storage-tank', 'soccer-ball-field',
                'roundabout', 'harbor', 'swimming-pool', 'helicopter')
 
+    CLASSES = ('storage_tank','vehicle','aircraft','ship','bridge','sports_facility','roundabout','harbor')
+
     PALETTE = [(165, 42, 42), (189, 183, 107), (0, 255, 0), (255, 0, 0),
                (138, 43, 226), (255, 128, 0), (255, 0, 255), (0, 255, 255),
                (255, 193, 193), (0, 51, 153), (255, 250, 205), (0, 139, 139),
                (255, 255, 0), (147, 116, 116), (0, 0, 255)]
 
+    PALETTE = [
+        (220, 20, 60),    # storage_tank: 红色
+        (119, 11, 32),     # vehicle: 深红
+        (0, 0, 255),       # aircraft: 蓝色
+        (0, 255, 0),       # ship: 绿色
+        (255, 0, 0),       # bridge: 亮红
+        (255, 165, 0),     # sports_facility: 橙色
+        (128, 0, 128),     # roundabout: 紫色
+        (0, 255, 255)      # harbor: 青色
+    ]
     def __init__(self,
                  ann_file,
                  pipeline,
