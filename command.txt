@@ -1,0 +1,4 @@
+export PYTHONPATH=~/autodl-tmp:$PYTHONPATH
+
+chmod +x S2A-SAM/tools/dist_train.sh
+S2A-SAM/tools/dist_train.sh S2A-SAM/configs/s2anet/s2anet_r50_fpn_1x_dota_le135.py 2 --work-dir log/rbox_expand_15

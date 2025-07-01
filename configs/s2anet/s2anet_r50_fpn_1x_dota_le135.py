@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/datasets/dotav1.py', '../_base_/schedules/schedule_1x.py',
+    '../_base_/datasets/dotav1.py', 
     '../_base_/default_runtime.py'
 ]
 dataset_type = 'DOTADataset'
@@ -7,22 +7,21 @@ dataset_type = 'DOTADataset'
 
         
 evaluation = dict(interval=2, metric='mAP')
+optimizer = dict(type='AdamW', lr=1e-04, betas=(0.9, 0.999), weight_decay=0.05)
+optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
 optim_wrapper = dict(
-    optimizer=dict(
-        _delete_=True,
-        type='AdamW',
-        lr=0.00005,
-        betas=(0.9, 0.999),
-        weight_decay=0.05))
-# optimizer = dict(type='SGD', lr=0.00005, momentum=0.9, weight_decay=0.0001)
-# optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
+optimizer = dict(type='AdamW', lr=1e-04, betas=(0.9, 0.999), weight_decay=0.05),
+optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
+)
+
 lr_config = dict(
     policy='step',
     warmup='linear',
     warmup_iters=500,
     warmup_ratio=0.3333333333333333,
-    step=[8,11])
-runner = dict(type='EpochBasedRunner', max_epochs=24)
+    step=[12,20])
+
+runner = dict(type='EpochBasedRunner', max_epochs=28)
 checkpoint_config = dict(interval=1)
 log_config = dict(interval=50, hooks=[dict(type='TextLoggerHook')])
 dist_params = dict(backend='nccl')
@@ -156,9 +155,19 @@ train_pipeline = [
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels'])
 ]
 data = dict(
-    train=dict(ann_file='instances2/train/labelTxt/',
-    img_prefix='instances2/train/images/',pipeline=train_pipeline, version=angle_version),
-    val=dict(ann_file='instances2/val/labelTxt/',
-        img_prefix='instances2/val/images/', version=angle_version),
-    test=dict(ann_file='instances2/val2/labelTxt/',
-        img_prefix='instances2/val2/images/', version=angle_version))
+    samples_per_gpu=4,
+    workers_per_gpu=4,
+    train=dict(ann_file='/root/autodl-tmp/mnt/nas-new/home/zhanggefan/zw/A_datasets/qiyuan/ALL/train_all/annfiles15/A_datasets/qiyuan/ALL/train_all1/annfiles/',
+    img_prefix='/root/autodl-tmp/mnt/nas-new/home/zhanggefan/zw/A_datasets/qiyuan/ALL/train_all/images/',pipeline=train_pipeline, version=angle_version),
+    val=dict(ann_file='instances3/trainval2/train_dota_1024/annfiles/',
+        img_prefix='instances3/trainval2/train_dota_1024/images/', version=angle_version),
+    test=dict(
+        # ann_file='instances2/test/labelTxt/',
+        # img_prefix='instances2/test/images/', version=angle_version))
+        #     ann_file='instances3/test/images/',
+        # img_prefix='instances3/test/images/', version=angle_version))
+        # ann_file='instances3/trainval/images/',
+        # img_prefix='instances3/trainval/images/', version=angle_version))
+        ann_file='instances/test/images/',
+        img_prefix='instances/test/images/', version=angle_version))
+

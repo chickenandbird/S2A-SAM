@@ -217,3 +217,165 @@ This project is released under the [Apache 2.0 license](LICENSE).
 # S2A-SAM
 建立在S2ANet之上的实例分割模型
 
+
+#函数实际用法，以及进行实例分割的路径
+## 工作流程：
+
+
+
+- test.py -> 修改submission_dir='result/s2anet_dota_test_final'产生一个class 对应实例的文件，包括一个zip文件。
+
+
+
+- 利用产生的结果文件夹调用函数DOTAresult2imgfile ->产生新的txt文件
+
+- zw/imgfile2qiyuansubmit.py  ->用新的txt文件产生json文件，也是用于提交的文件，最新版本是imgfile2qiyuansubmit_3.py
+
+- vis_fromjson->从json文件可视化
+
+
+
+Mycode:
+
+COCO_2_DOTA：将给的json train改为DOTA模式，值得注意的是，我好像漏掉了一部分数据。
+
+dataset_seg：将训练集分割
+
+delete：删除元数据
+
+hbox_2_rbox：把bbox标注转为hbox标注
+
+
+
+merge_image：
+
+my_train:继承已经训练的模型的参数,这个函数经过实际的实验证明是没有意义的，机械地继承已训练数据集意义不大。
+
+new_val:把val当中的200张复制到val2，用来测试的
+
+vis:旋转框标注的可视化。
+
+
+
+zw:
+
+DOTAresult2imgfile:用于将test 产生的json文件转换成与图像同名txt文件      
+
+imgfile2qiyuansubmit：用于把dota的txt文件输入sam产生启元要求的json文件。
+
+imgfile2samvisual：zw可视化
+
+vis_fromjson：从json文件生成可视化图片，mask标注
+
+vis_fromjson2：连点标注可视化
+
+img_expand：对特定种类的数据进行扩充
+
+result2DOTAtxt：把json结果可视化
+
+sam_test2：将所有test的txt标注输入sam可视化
+
+
+
+## 实验数据记录:都使用大的sam模型。
+
+1_result.json:使用水平框中心点为正点；边缘点为负点
+
+2_result.json:在不接近边缘时用水平框为正点;在不接近边缘时旋转框边缘点为负点。
+
+3_result.json：使用canny边缘检测筛选旋转框内部较强边缘点，边缘点的质心作为正点；
+
+4_result.json:置信度筛选用的是0.3，使用canny边缘检测筛选旋转框内部较强边缘点，边缘点的质心作为正点；矩形端点作为负点，生成最终提交的结果。当前条件还是只使用最大连通分量的方法。优化点是canny边缘检测的质心作为正点；roundabout类中心点为负点。canny会被可视化。predictor.reset_image() 。双连通没有意义。
+
+-->   json_img_5
+
+5_result.json-->json_img_6
+
+**6_result_15.json：使用DOTAv1.5作为补充数据集；储蓄罐用旋转框四条边的均值作为边长（这个似乎不靠谱，因为只有部分的目标会被排除在外）；roundabout中心取的是正点，这个比4要对，环岛指的是环岛中心的花坛。**
+
+7_result.json:-->json_img_6
+
+json_img_3:canny边缘检测提供中心点，但是负点还是水平框端点
+
+json_img_4:canny边缘检测提供中心点，负点是水平框端点，但是使用了predictor.reset_image() 
+
+
+
+经过实践，6_result_15效果比较好。canny边缘检测提供中心点，但是负点还是水平框端点。不对storage_tank做特殊处理。roundabout由于训练集数据存在问题，本来用投票的方法对外部边缘处理为负点，但实际情况是，由于环岛中心预测很难准确，这种方法是做不到的。
+
+
+
+## 进过实践，一个比较好的学习率config：
+
+lr_config = dict(
+
+  policy='step',
+
+  warmup='linear',
+
+  warmup_iters=500,
+
+  warmup_ratio=0.3333333333333333,
+
+  step=[12,20])
+
+runner = dict(type='EpochBasedRunner', max_epochs=28)
+
+evaluation = dict(interval=2, metric='mAP')
+
+optimizer = dict(type='AdamW', lr=1e-04, betas=(0.9, 0.999), weight_decay=0.05)
+
+optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
+
+optim_wrapper = dict(
+
+optimizer = dict(type='AdamW', lr=1e-04, betas=(0.9, 0.999), weight_decay=0.05),
+
+samples_per_gpu=4,workers_per_gpu=4,
+
+
+
+
+
+
+
+
+
+## 可能的优化方法举例：
+
+第一个思路：
+
+所有图片everything，然后用框来判定那些是合适的目标。不过很不靠谱，因为SAM的性能限制。
+
+第二个思路：
+
+训两个目标检测模型，一个外界框；一个内接框，方法是取框和实例分割的loss，可以允许多个框的存在。
+
+没有想到，两种实例的标注可能是有差的，比如DOTA数据集的环岛是包含旁边公路的，而启元实验室给的并不包含。
+
+
+
+## 总结:
+
+没有进行微调的SAM非常不靠谱，不能作为实例分割的核心，最好作为辅助，比如数据增强？
+
+
+
+File "/root/autodl-tmp/S2A-SAM/tools/test.py", line 264, in main
+    dataset.format_results(outputs,submission_dir='result/new_DOTA_24epoch', **kwargs)
+  File "/root/autodl-tmp/S2A-SAM/mmrotate/datasets/dota.py", line 364, in format_results
+    result_files = self._results2submission(id_list, dets_list,
+  File "/root/autodl-tmp/S2A-SAM/mmrotate/datasets/dota.py", line 299, in _results2submission
+    raise ValueError(f'The out_folder should be a non-exist path, '
+ValueError: The out_folder should be a non-exist path, but result/new_DOTA_24epoch is existing
+
+艹，这个B函数还有这种要求
+
+
+
+
+
+
+
+
+

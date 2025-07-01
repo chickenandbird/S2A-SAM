@@ -26,16 +26,15 @@ from mmdet.core import encode_mask_results
 
 # python S2A-SAM/demo/image_demo.py instances2/val2/images/47.png S2A-SAM/configs/s2anet/s2anet_r50_fpn_1x_dota_le135.py --weights log/rbox/epoch_24.pth
 
-
-
 def parse_args():
     """Parse parameters."""
     parser = argparse.ArgumentParser(
         description='MMDet test (and eval) a model')
     parser.add_argument('--config', default='S2A-SAM/configs/s2anet/s2anet_r50_fpn_1x_dota_le135.py',help='test config file path')
-    parser.add_argument('--checkpoint',default='log/rbox/epoch_24.pth', help='checkpoint file')
+    parser.add_argument('--checkpoint',default='log/rbox_expand_2/epoch_28.pth', help='checkpoint file')
     parser.add_argument(
         '--work-dir',
+        # default='instances2/test/predict_image',
         help='the directory to save the file containing evaluation metrics')
     parser.add_argument('--out', help='output result file in pickle format')
     parser.add_argument(
@@ -63,7 +62,7 @@ def parse_args():
         ' "segm", "proposal" for COCO, and "mAP", "recall" for PASCAL VOC')
     parser.add_argument('--show', action='store_true', help='show results')
     parser.add_argument(
-        '--show-dir',default='instances2/val2/predict_image', help='directory where painted images will be saved')
+        '--show-dir', help='directory where painted images will be saved')
     parser.add_argument(
         '--show-score-thr',
         type=float,
@@ -89,6 +88,7 @@ def parse_args():
         'is allowed.')
     parser.add_argument(
         '--eval-options',
+        default={},
         nargs='+',
         action=DictAction,
         help='custom options for evaluation, the key-value pair in xxx=yyy '
@@ -213,36 +213,9 @@ def main():
 
     # build the dataloader
     dataset = build_dataset(cfg.data.test)
+
     data_loader = build_dataloader(dataset, **test_loader_cfg)
-
-    for data in data_loader:
-        print(type(data['img']))
-    # from mmcv.parallel import DataContainer
-    # import torch
-
-    # def fix_batch(batch):
-    #     """将 img 字段的列表转为堆叠张量"""
-    #     if 'img' in batch:
-    #         # 检查 img 是否被错误存储为列表
-    #         if isinstance(batch['img'], list):
-    #             # 堆叠列表中的张量 [N, C, H, W
-    #             img_tensor = batch['img'][0].data[0]
-    #             batch['img'] = DataContainer(img_tensor, stack=True)
-    #     return batch
-
-    # # 重写 data_loader 的迭代逻辑
-    # class FixedDataLoader:
-    #     def __init__(self, orig_loader):
-    #         self.orig_loader = orig_loader
-    #         self.dataset = orig_loader.dataset
-            
-    #     def __iter__(self):
-    #         for batch in self.orig_loader:
-    #             yield fix_batch(batch)
-
-    # # 替换原 data_loader
-    # data_loader = FixedDataLoader(data_loader)
-
+    
     cfg.model.train_cfg = None
     cfg.device = get_device()
     model = build_detector(cfg.model, test_cfg=cfg.get('test_cfg'))
@@ -284,8 +257,11 @@ def main():
             print(f'\nwriting results to {args.out}')
             mmcv.dump(outputs, args.out)
         kwargs = {} if args.eval_options is None else args.eval_options
+        # 在代码中合并默认值
+        if not kwargs:  # 无命令行输入时使用默认值
+            kwargs = {'jsonfile_prefix': 'result/DOTA_28epoch_15'}
         if args.format_only:
-            dataset.format_results(outputs, **kwargs)
+            dataset.format_results(outputs,submission_dir='result/DOTA_28epoch_15', **kwargs)
         if args.eval:
             eval_kwargs = cfg.get('evaluation', {}).copy()
             # hard-code way to remove EvalHook args

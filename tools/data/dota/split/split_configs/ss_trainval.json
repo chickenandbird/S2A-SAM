@@ -1,12 +1,12 @@
 {
   "nproc": 10,
   "img_dirs": [
-    "data/DOTA/train/images/",
-    "data/DOTA/val/images/"
+    "instances2/train/images/",
+    "instances2/val/images/"
   ],
   "ann_dirs": [
-    "data/DOTA/train/labelTxt/",
-    "data/DOTA/val/labelTxt/"
+    "instances2/train/labelTxt/",
+    "instances2/val/labelTxt/"
   ],
   "sizes": [
     1024
@@ -25,6 +25,6 @@
     116,
     124
   ],
-  "save_dir": "data/split_ss_dota/trainval/",
+  "save_dir": "instances3/trainval/",
   "save_ext": ".png"
 }

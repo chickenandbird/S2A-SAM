@@ -19,7 +19,7 @@ from mmdet.datasets.custom import CustomDataset
 from mmrotate.core import eval_rbbox_map, obb2poly_np, poly2obb_np
 from .builder import ROTATED_DATASETS
 
-
+#mark
 @ROTATED_DATASETS.register_module()
 class DOTADataset(CustomDataset):
     """DOTA dataset for detection.
@@ -296,9 +296,11 @@ class DOTADataset(CustomDataset):
             out_folder (str, optional): Folder of submission.
         """
         if osp.exists(out_folder):
-            raise ValueError(f'The out_folder should be a non-exist path, '
-                             f'but {out_folder} is existing')
-        os.makedirs(out_folder)
+            pass
+            # raise ValueError(f'The out_folder should be a non-exist path, '
+            #                  f'but {out_folder} is existing')
+        else:
+            os.makedirs(out_folder)
 
         files = [
             osp.join(out_folder, 'Task1_' + cls + '.txt')

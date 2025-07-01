@@ -7,7 +7,7 @@ from ..builder import ROTATED_HEADS
 from ..utils import ORConv2d, RotationInvariantPooling
 from .rotated_retina_head import RotatedRetinaHead
 
-
+#mark一下
 @ROTATED_HEADS.register_module()
 class ODMRefineHead(RotatedRetinaHead):
     """Rotated Anchor-based refine head. It's a part of the Oriented Detection

@@ -124,6 +124,7 @@ class S2ANet(RotatedBaseDetector):
         outs = self.odm_head(align_feat)
 
         bbox_inputs = outs + (img_meta, self.test_cfg, rescale)
+        #mark一下
         bbox_list = self.odm_head.get_bboxes(*bbox_inputs, rois=rois)
 
 

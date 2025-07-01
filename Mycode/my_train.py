@@ -47,10 +47,10 @@ cfg.data.test.img_prefix = cfg.data_root+'val/images/'
 #                'small-vehicle', 'large-vehicle', 'ship', 'tennis-court',
 #                'basketball-court', 'storage-tank', 'soccer-ball-field',
 #                'roundabout', 'harbor', 'swimming-pool', 'helicopter'] 
-old_classes = ['aircraft2', 'baseball-diamond', 'bridge2', 'ground-track-field',
-               'small-vehicle', 'large-vehicle', 'ship2', 'tennis-court',
-               'basketball-court', 'storage_tank2', 'soccer-ball-field',
-               'roundabout2', 'harbor2', 'swimming-pool', 'helicopter']  # 预训练模型类别
+old_classes = ['aircraft', 'baseball-diamond', 'bridge', 'ground-track-field',
+               'small-vehicle', 'large-vehicle', 'ship', 'tennis-court',
+               'basketball-court', 'storage_tank', 'soccer-ball-field',
+               'roundabout', 'harbor', 'swimming-pool', 'helicopter']  # 预训练模型类别
 new_classes = ['storage_tank','vehicle','aircraft','ship','bridge','sports_facility','roundabout','harbor']  # 新数据集类别
 common_classes = list(set(old_classes) & set(new_classes))  # 重叠类别['vehicle', 'ship']
 

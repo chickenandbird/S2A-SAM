@@ -24,10 +24,10 @@ from mmrotate.utils import (collect_env, get_device, get_root_logger,
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a detector')
-    parser.add_argument('--config',default='S2A-SAM/configs/s2anet/s2anet_r50_fpn_1x_dota_le135.py', help='train config file path')
-    parser.add_argument('--work-dir',default='log/rbox2', help='the dir to save logs and models')
+    parser.add_argument('config',default='S2A-SAM/configs/s2anet/s2anet_r50_fpn_1x_dota_le135.py', help='train config file path')
+    parser.add_argument('--work-dir',default='log/rbox2_noweight', help='the dir to save logs and models')
     parser.add_argument(
-        '--resume-from', default='log/rbox/epoch_2.pth',help='the checkpoint file to resume from')
+        '--resume-from',default='log/rbox_expand_15/epoch_17.pth',help='the checkpoint file to resume from')
     parser.add_argument(
         '--auto-resume',
         action='store_true',
@@ -173,6 +173,30 @@ def main():
     model.init_weights()
 
     datasets = [build_dataset(cfg.data.train)]
+
+    # runner_type = 'EpochBasedRunner' if 'runner' not in cfg else cfg.runner[
+    # 'type']
+
+    # train_dataloader_default_args = dict(
+    # samples_per_gpu=2,
+    # workers_per_gpu=2,
+    # # `num_gpus` will be ignored if distributed
+    # num_gpus=len(cfg.gpu_ids),
+    # dist=distributed,
+    # seed=cfg.seed,
+    # runner_type=runner_type,
+    # persistent_workers=False)
+
+    # train_loader_cfg = {
+    #     **train_dataloader_default_args,
+    #     **cfg.data.get('train_dataloader', {})
+    # }
+
+    # data_loaders = [build_dataloader(ds, **train_loader_cfg) for ds in datasets]
+
+    # # for data in data_loaders[0]:
+    # #     print(data)
+    # #     break
     if len(cfg.workflow) == 2:
         val_dataset = copy.deepcopy(cfg.data.val)
         val_dataset.pipeline = cfg.data.train.pipeline
